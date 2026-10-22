@@ -19,6 +19,26 @@ import time
 import requests
 from urllib.parse import quote, urljoin
 
+
+def cargar_config():
+    """Lee config.txt (junto a este archivo) para no tener que usar 'set' cada vez."""
+    ruta = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.txt")
+    try:
+        with open(ruta, encoding="utf-8-sig") as f:
+            for linea in f:
+                linea = linea.strip()
+                if not linea or linea.startswith("#") or "=" not in linea:
+                    continue
+                clave, valor = linea.split("=", 1)
+                clave, valor = clave.strip(), valor.strip().strip('"').strip("'")
+                if valor and clave not in os.environ:
+                    os.environ[clave] = valor
+    except FileNotFoundError:
+        pass
+
+
+cargar_config()
+
 # ---------------- CONFIGURACIÓN ----------------
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "PEGA_AQUI_TU_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
@@ -57,6 +77,7 @@ SHOPIFY = {
 # Ripley: se revisan las páginas de resultados de búsqueda (primeras páginas)
 RIPLEY_BASE = "https://simple.ripley.com.pe"
 RIPLEY_PAGINAS = 3
+_ripley_bloqueado = False
 
 
 # ---------------- UTILIDADES ----------------
@@ -103,7 +124,8 @@ def enviar_telegram(texto):
             espera = r.json().get("parameters", {}).get("retry_after", 5)
             time.sleep(espera + 1)
             continue
-        r.raise_for_status()
+        if not r.ok:
+            raise RuntimeError(f"Telegram respondió {r.status_code}: {r.text[:200]}")
         return
 
 
@@ -211,6 +233,9 @@ def _parsear_ripley(texto_html):
 
 
 def buscar_ripley(termino):
+    global _ripley_bloqueado
+    if _ripley_bloqueado:
+        return
     for pagina in range(1, RIPLEY_PAGINAS + 1):
         r = requests.get(
             f"{RIPLEY_BASE}/search/{quote(termino)}",
@@ -218,6 +243,9 @@ def buscar_ripley(termino):
             headers=HEADERS,
             timeout=30,
         )
+        if r.status_code == 403:
+            _ripley_bloqueado = True
+            raise RuntimeError("Ripley bloquea el acceso desde este servidor (403); se omite en esta revision")
         r.raise_for_status()
         productos = _parsear_ripley(r.text)
         if not productos:
@@ -288,7 +316,7 @@ def procesar(prod, vistos):
         f'{html.escape(prod["marca"])} {html.escape(prod["nombre"])}\n'
         f'💰 S/ {prod["precio"]:,.2f}'
         + (f' (antes S/ {prod["original"]:,.2f})' if prod["original"] else "")
-        + f'\n{prod["url"]}'
+        + f'\n{html.escape(prod["url"], quote=False)}'
     )
     enviar_telegram(msg)
     vistos.add(clave)
@@ -297,6 +325,8 @@ def procesar(prod, vistos):
 
 
 def revisar():
+    global _ripley_bloqueado
+    _ripley_bloqueado = False
     vistos = cargar_vistos()
     nuevos = 0
     fuentes = []
@@ -323,6 +353,15 @@ def revisar():
 
 
 def main():
+    if "--debug-ripley" not in sys.argv and (
+        not TELEGRAM_TOKEN
+        or not TELEGRAM_CHAT_ID
+        or "PEGA_AQUI" in TELEGRAM_TOKEN
+        or "PEGA_AQUI" in TELEGRAM_CHAT_ID
+    ):
+        print("Falta configurar TELEGRAM_TOKEN y/o TELEGRAM_CHAT_ID.")
+        print("En la laptop: config.txt. En GitHub: Settings > Secrets and variables > Actions.")
+        sys.exit(1)
     if "--debug-ripley" in sys.argv:
         i = sys.argv.index("--debug-ripley")
         debug_ripley(sys.argv[i + 1] if len(sys.argv) > i + 1 else "celular")
