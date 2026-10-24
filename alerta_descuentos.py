@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Alerta de descuentos (>= 70%) en Falabella, Ripley, Oechsle, Plaza Vea, Metro,
+Alerta de descuentos (mínimo configurable) en Falabella, Ripley, Oechsle, Plaza Vea, Metro,
 Shopstar y Portaline -> Telegram.
 
 Uso:
@@ -15,6 +15,7 @@ import os
 import re
 import sys
 import time
+from datetime import datetime, timedelta, timezone
 
 import requests
 from urllib.parse import quote, urljoin
@@ -43,13 +44,17 @@ cargar_config()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "PEGA_AQUI_TU_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
 
-MIN_DESCUENTO = 70      # porcentaje mínimo para avisar
+MIN_DESCUENTO = 60      # porcentaje mínimo para avisar
 INTERVALO_MIN = 30      # cada cuántos minutos revisar
+MAX_ALERTAS_POR_REVISION = 15  # máximo de mensajes por revisión; el resto llega en la siguiente
+HORA_LATIDO = 8  # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
 BUSQUEDAS = [
     "caterpillar", "parlantes", "audifono ear",
     "celular", "smartphone", "tetera", "tablet", "mochila porta",
     "televisor", "audifonos", "smartwatch", "consola", "maleta",
-    "zapatillas hombre", "zapatillas mujer", "porta", "ropa", "mochila",
+    "zapatillas", "porta", "polo", "mochila",
+    "licuadora", "refrigeradora", "lavadora", "microondas",
+    "freidora", "lentes",
 ]
 SEEN_FILE = "vistos.json"
 
@@ -108,6 +113,10 @@ def guardar_vistos(vistos):
         json.dump(sorted(vistos), f)
 
 
+class LimiteTelegram(Exception):
+    """Telegram pidió esperar demasiado: se deja el resto para la próxima revisión."""
+
+
 def enviar_telegram(texto):
     for intento in range(2):
         r = requests.post(
@@ -120,10 +129,15 @@ def enviar_telegram(texto):
             },
             timeout=20,
         )
-        if r.status_code == 429 and intento == 0:
-            espera = r.json().get("parameters", {}).get("retry_after", 5)
-            time.sleep(espera + 1)
-            continue
+        if r.status_code == 429:
+            try:
+                espera = int(r.json().get("parameters", {}).get("retry_after", 5))
+            except Exception:
+                espera = 5
+            if intento == 0 and espera <= 60:
+                time.sleep(espera + 1)
+                continue
+            raise LimiteTelegram(f"Telegram pidió esperar {espera}s")
         if not r.ok:
             raise RuntimeError(f"Telegram respondió {r.status_code}: {r.text[:200]}")
         return
@@ -320,8 +334,30 @@ def procesar(prod, vistos):
     )
     enviar_telegram(msg)
     vistos.add(clave)
-    time.sleep(1)
+    guardar_vistos(vistos)
+    time.sleep(3)
     return 1
+
+
+def enviar_latido(vistos, revisados, nuevos, con_error, ahora=None):
+    """Una vez al día (desde HORA_LATIDO, hora de Lima) avisa que el bot sigue activo."""
+    ahora = ahora or datetime.now(timezone(timedelta(hours=-5)))
+    clave = f"__latido__:{ahora:%Y-%m-%d}"
+    if ahora.hour < HORA_LATIDO or clave in vistos:
+        return
+    lineas = [
+        f"✅ Bot activo ({ahora:%d/%m/%Y %H:%M}, hora de Lima)",
+        f"Productos revisados en la última ronda: {revisados}",
+        f"Alertas nuevas en esa ronda: {nuevos}",
+        f"Descuento mínimo: {MIN_DESCUENTO}%",
+    ]
+    if con_error:
+        lineas.append("⚠️ Sin acceso a: " + html.escape(", ".join(sorted(con_error))))
+    enviar_telegram("\n".join(lineas))
+    for vieja in [v for v in vistos if v.startswith("__latido__:")]:
+        vistos.discard(vieja)
+    vistos.add(clave)
+    guardar_vistos(vistos)
 
 
 def revisar():
@@ -341,15 +377,32 @@ def revisar():
     for tienda, base in SHOPIFY.items():
         fuentes.append((f"{tienda} / catálogo", lambda tn=tienda, b=base: buscar_shopify(tn, b)))
 
+    revisados = 0
+    con_error = set()
     for nombre, fn in fuentes:
+        if nuevos >= MAX_ALERTAS_POR_REVISION:
+            print(f"Límite de {MAX_ALERTAS_POR_REVISION} alertas por revisión alcanzado; el resto llegará en la próxima.")
+            break
         try:
             for prod in fn():
+                revisados += 1
+                if nuevos >= MAX_ALERTAS_POR_REVISION:
+                    break
                 nuevos += procesar(prod, vistos)
+        except LimiteTelegram as e:
+            print(f"[{nombre}] {e}; el resto se enviará en la próxima revisión.")
+            break
         except Exception as e:
             print(f"[{nombre}] error: {e}")
+            if "Telegram" not in str(e):
+                con_error.add(nombre.split(" / ")[0])
         time.sleep(2)  # cortesía entre peticiones
     guardar_vistos(vistos)
     print(f"Revisión terminada: {nuevos} alertas nuevas.")
+    try:
+        enviar_latido(vistos, revisados, nuevos, con_error)
+    except Exception as e:
+        print(f"[aviso diario] error: {e}")
 
 
 def main():
