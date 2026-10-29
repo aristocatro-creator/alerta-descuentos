@@ -46,15 +46,15 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
 
 MIN_DESCUENTO = 60      # porcentaje mínimo para avisar
 INTERVALO_MIN = 30      # cada cuántos minutos revisar
-MAX_ALERTAS_POR_REVISION = 15  # máximo de mensajes por revisión; el resto llega en la siguiente
+MAX_ALERTAS_POR_REVISION = 50  # máximo de mensajes por revisión; el resto llega en la siguiente
 HORA_LATIDO = 8  # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
 BUSQUEDAS = [
     "caterpillar", "parlantes", "audifono ear",
     "celular", "smartphone", "tetera", "tablet", "mochila porta",
     "televisor", "audifonos", "smartwatch", "consola", "maleta",
-    "zapatillas", "porta", "polo", "mochila",
+    "sandalia", "zapatillas", "porta", "ropa", "mochila",
     "licuadora", "refrigeradora", "lavadora", "microondas",
-    "freidora", "lentes",
+    "freidora", "aspiradora",
 ]
 SEEN_FILE = "vistos.json"
 

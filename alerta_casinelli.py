@@ -42,9 +42,9 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
 
 MIN_DESCUENTO = 50              # porcentaje mínimo para avisar
 INTERVALO_MIN = 30              # minutos entre revisiones (solo en modo bucle)
-MAX_ALERTAS_POR_REVISION = 15   # el resto llega en la siguiente revisión
-HORA_LATIDO = 8                 # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
-BUSQUEDAS = ["caño", "inodoro", "trampa", "smart", "sensor"]
+MAX_ALERTAS_POR_REVISION = 50   # el resto llega en la siguiente revisión
+HORA_LATIDO = 9                 # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
+BUSQUEDAS = ["griferia", "inodoro", "iluminacion", "trampa", "sensor"]
 TIENDAS = {
     "Cassinelli": "https://www.cassinelli.com",
     "Promart": "https://www.promart.pe",
