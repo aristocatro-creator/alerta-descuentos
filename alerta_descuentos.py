@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
-Alerta de descuentos (mínimo configurable) en Falabella, Ripley, Oechsle, Plaza Vea, Metro,
-Shopstar y Portaline -> Telegram.
+Alerta de descuentos (mínimo configurable) en Falabella, Tottus, Ripley, Oechsle, Plaza Vea,
+Metro, Shopstar, Coolbox y Portaline -> Telegram.
 
 Uso:
     pip install requests
@@ -52,9 +52,10 @@ BUSQUEDAS = [
     "caterpillar", "parlantes", "audifono ear",
     "celular", "smartphone", "tetera", "tablet", "mochila porta",
     "televisor", "audifonos", "smartwatch", "consola", "maleta",
-    "sandalia", "zapatillas", "porta", "ropa", "mochila",
+    "zapatillas hombre", "zapatillas mujer", "porta", "ropa", "mochila",
     "licuadora", "refrigeradora", "lavadora", "microondas",
     "freidora", "aspiradora",
+    "aceite de oliva",
 ]
 SEEN_FILE = "vistos.json"
 
@@ -72,6 +73,7 @@ VTEX = {
     "Plaza Vea": "https://www.plazavea.com.pe",
     "Metro": "https://www.metro.pe",
     "Shopstar": "https://www.shopstar.pe",
+    "Coolbox": "https://www.coolbox.pe",
 }
 
 # Portaline usa Shopify: se revisa todo su catálogo una vez por ciclo
@@ -173,18 +175,29 @@ def buscar_vtex(tienda, base, termino):
         }
 
 
-def buscar_falabella(termino):
-    r = requests.get(
-        "https://www.falabella.com.pe/falabella-pe/search",
-        params={"Ntt": termino},
-        headers=HEADERS,
-        timeout=30,
-    )
+def buscar_falabella(
+    termino,
+    tienda="Falabella",
+    url="https://www.falabella.com.pe/falabella-pe/search",
+    base="https://www.falabella.com.pe",
+    etiqueta_primero=False,
+):
+    """Falabella y Tottus comparten la misma plataforma (Next.js con __NEXT_DATA__)."""
+    r = requests.get(url, params={"Ntt": termino}, headers=HEADERS, timeout=30)
     r.raise_for_status()
+    resultados = []
     m = re.search(r'<script id="__NEXT_DATA__"[^>]*>(.*?)</script>', r.text, re.S)
-    if not m:
-        raise RuntimeError("Falabella no devolvió datos (posible bloqueo)")
-    resultados = json.loads(m.group(1))["props"]["pageProps"].get("results", [])
+    if m:
+        try:
+            resultados = json.loads(m.group(1))["props"]["pageProps"].get("results", [])
+        except (KeyError, ValueError, TypeError):
+            resultados = []
+    if not resultados:  # respaldo: leer las tarjetas del HTML
+        productos = _parsear_ripley(r.text, tienda, base)
+        if not productos:
+            raise RuntimeError(f"{tienda} no devolvió datos (posible bloqueo)")
+        yield from productos
+        return
     for p in resultados:
         actuales, tachados = [], []
         for pr in p.get("prices", []):
@@ -193,14 +206,17 @@ def buscar_falabella(termino):
                 (tachados if pr.get("crossed") else actuales).append(val)
         precio = min(actuales) if actuales else None
         original = max(tachados) if tachados else None
-        desc = pct(precio, original)
-        if not desc:  # respaldo: etiqueta de descuento
-            etiqueta = (p.get("discountBadge") or {}).get("label", "")
-            n = re.search(r"\d+", etiqueta)
-            desc = int(n.group()) if n else 0
+        etiqueta = (p.get("discountBadge") or {}).get("label", "")
+        n = re.search(r"\d+", etiqueta)
+        desc_etiqueta = int(n.group()) if n else 0
+        desc_precios = pct(precio, original)
+        if etiqueta_primero:   # supermercado: se confía en el % que muestra la tienda
+            desc = desc_etiqueta or desc_precios
+        else:
+            desc = desc_precios or desc_etiqueta
         yield {
-            "tienda": "Falabella",
-            "id": str(p.get("productId")),
+            "tienda": tienda,
+            "id": str(p.get("productId") or p.get("skuId") or p.get("url") or p.get("displayName")),
             "nombre": p.get("displayName", ""),
             "marca": p.get("brand", ""),
             "precio": precio,
@@ -210,7 +226,17 @@ def buscar_falabella(termino):
         }
 
 
-def _parsear_ripley(texto_html):
+def buscar_tottus(termino):
+    return buscar_falabella(
+        termino,
+        "Tottus",
+        "https://www.tottus.com.pe/tottus-pe/buscar",
+        "https://www.tottus.com.pe",
+        etiqueta_primero=True,
+    )
+
+
+def _parsear_ripley(texto_html, tienda="Ripley", base=None):
     """Lee las tarjetas de producto de una página de Ripley."""
     productos, urls_vistas = [], set()
     patron = r'<a\b[^>]*?href="([^"#][^"]*)"[^>]*>(.*?)</a>'
@@ -228,13 +254,13 @@ def _parsear_ripley(texto_html):
                 precios.append(v)
         if len(set(precios)) < 2:
             continue
-        url = urljoin(RIPLEY_BASE, href)
+        url = urljoin(base or RIPLEY_BASE, href)
         if url in urls_vistas:
             continue
         urls_vistas.add(url)
         precio, original = min(precios), max(precios)
         productos.append({
-            "tienda": "Ripley",
+            "tienda": tienda,
             "id": url,
             "nombre": txt.split("S/")[0].strip()[:120],
             "marca": "",
@@ -368,6 +394,7 @@ def revisar():
     fuentes = []
     for termino in BUSQUEDAS:
         fuentes.append((f"Falabella / {termino}", lambda t=termino: buscar_falabella(t)))
+        fuentes.append((f"Tottus / {termino}", lambda t=termino: buscar_tottus(t)))
         for tienda, base in VTEX.items():
             fuentes.append(
                 (f"{tienda} / {termino}", lambda tn=tienda, b=base, t=termino: buscar_vtex(tn, b, t))

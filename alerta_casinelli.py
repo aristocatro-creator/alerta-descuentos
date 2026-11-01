@@ -43,12 +43,15 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
 MIN_DESCUENTO = 50              # porcentaje mínimo para avisar
 INTERVALO_MIN = 30              # minutos entre revisiones (solo en modo bucle)
 MAX_ALERTAS_POR_REVISION = 50   # el resto llega en la siguiente revisión
-HORA_LATIDO = 9                 # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
-BUSQUEDAS = ["griferia", "inodoro", "iluminacion", "trampa", "sensor"]
+HORA_LATIDO = 8                 # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
+BUSQUEDAS = ["griferia", "inodoro", "iluminacion", "sensor"]
 TIENDAS = {
     "Cassinelli": "https://www.cassinelli.com",
     "Promart": "https://www.promart.pe",
 }
+# Palabras propias de una tienda (si una tienda no aparece aquí, usa la lista BUSQUEDAS de arriba).
+# Ejemplo:  BUSQUEDAS_POR_TIENDA = {"Promart": ["taladro", "pintura"]}
+BUSQUEDAS_POR_TIENDA = {}
 PAGINAS = 2                     # páginas de 50 productos por búsqueda
 SEEN_FILE = "vistos_casinelli.json"
 
@@ -178,7 +181,7 @@ def enviar_latido(vistos, revisados, nuevos, con_error, ahora=None):
     if ahora.hour < HORA_LATIDO or clave in vistos:
         return
     lineas = [
-        f"✅ Bot Cassinelli/Promart activo ({ahora:%d/%m/%Y %H:%M}, hora de Lima)",
+        f"✅ Bot {'/'.join(TIENDAS)} activo ({ahora:%d/%m/%Y %H:%M}, hora de Lima)",
         f"Productos revisados en la última ronda: {revisados}",
         f"Alertas nuevas en esa ronda: {nuevos}",
         f"Descuento mínimo: {MIN_DESCUENTO}%",
@@ -198,7 +201,7 @@ def revisar():
     nuevos = ok = fallos = revisados = 0
     con_error = set()
     for tienda, base in TIENDAS.items():
-        for termino in BUSQUEDAS:
+        for termino in BUSQUEDAS_POR_TIENDA.get(tienda, BUSQUEDAS):
             if nuevos >= MAX_ALERTAS_POR_REVISION:
                 break
             try:
