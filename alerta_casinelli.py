@@ -44,7 +44,7 @@ MIN_DESCUENTO = 50              # porcentaje mínimo para avisar
 INTERVALO_MIN = 30              # minutos entre revisiones (solo en modo bucle)
 MAX_ALERTAS_POR_REVISION = 50   # el resto llega en la siguiente revisión
 HORA_LATIDO = 8                 # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
-BUSQUEDAS = ["griferia", "inodoro", "iluminacion", "sensor"]
+BUSQUEDAS = ["griferia", "inodoro", "iluminacion", "trampa", "caño", "sensor"]
 TIENDAS = {
     "Cassinelli": "https://www.cassinelli.com",
     "Promart": "https://www.promart.pe",
