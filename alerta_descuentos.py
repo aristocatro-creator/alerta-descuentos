@@ -53,7 +53,7 @@ BUSQUEDAS = [
     "celular", "smartphone", "sole", "mochila porta", "sckechers",
     "televisor", "audifonos", "smartwatch", "consola", "maleta",
     "zapatilla", "porta", "huawei", "mochila",
-    "licuadora", "refrigeradora", "lavadora", "microondas",
+    "licuadora", "terma sole", "lavadora", "microondas",
     "freidora", "on-ear", "arroz", "tinta brother",
     "aceite de oliva", "aceite", "fideo", "balanza",
 ]
@@ -62,7 +62,7 @@ SEEN_FILE = "vistos.json"
 HEADERS = {
     "User-Agent": (
         "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-        "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+        "(KHTML, like Gecko) Chrome/124.0 Safari/537.3ds 
     ),
     "Accept-Language": "es-PE,es;q=0.9",
 }
