@@ -49,13 +49,13 @@ INTERVALO_MIN = 30      # cada cuántos minutos revisar
 MAX_ALERTAS_POR_REVISION = 50  # máximo de mensajes por revisión; el resto llega en la siguiente
 HORA_LATIDO = 8  # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
 BUSQUEDAS = [
-    "caterpillar", "parlantes", "audifono on ear",
-    "celular", "smartphone", "sole", "mochila porta", "sckechers",
-    "televisor", "audifonos", "smartwatch", "consola", "maleta",
-    "zapatilla", "porta", "huawei", "mochila",
-    "licuadora", "terma sole", "lavadora", "microondas",
-    "freidora", "on-ear", "arroz", "tinta brother",
-    "aceite de oliva", "aceite", "fideo", "balanza",
+    "caterpillar", "parlantes", "ear",
+    "celular", "smartphone", "mochila", "sckechers",
+    "televisor", "audifonos", "scooter", "consola",
+    "zapatilla", "porta", "mochila",
+    "jvc", "microondas", "KY4115B",
+    "freidora", "on-ear", "arroz", "brother",
+    "oliva", "aceite", "fideo", "sandalia",
 ]
 SEEN_FILE = "vistos.json"
 
