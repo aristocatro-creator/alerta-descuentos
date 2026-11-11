@@ -1,0 +1,36 @@
+name: Alerta moda y belleza 70
+
+on:
+  schedule:
+    - cron: "22,52 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: alerta-moda-belleza
+  cancel-in-progress: false
+
+jobs:
+  revisar:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install requests
+      - name: Revisar descuentos
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+        run: python alerta_moda_belleza.py --una-vez
+      - name: Guardar historial
+        if: always()
+        run: |
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add vistos_moda_belleza.json
+          git diff --cached --quiet || (git commit -m "actualizar vistos moda belleza" && git pull --rebase && git push)
