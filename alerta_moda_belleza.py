@@ -47,10 +47,10 @@ cargar_config()
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "PEGA_AQUI_TU_TOKEN")
 TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID", "PEGA_AQUI_TU_CHAT_ID")
 
-MIN_DESCUENTO = 70              # porcentaje mínimo para avisar
-MAX_DESCUENTO = 95              # en páginas HTML, por encima de esto se descarta (casi siempre es un error de lectura)
+MIN_DESCUENTO = 50              # porcentaje mínimo para avisar
+MAX_DESCUENTO = 99              # en páginas HTML, por encima de esto se descarta (casi siempre es un error de lectura)
 INTERVALO_MIN = 30              # minutos entre revisiones (solo en modo bucle)
-MAX_ALERTAS_POR_REVISION = 50   # el resto llega en la siguiente revisión
+MAX_ALERTAS_POR_REVISION = 100   # el resto llega en la siguiente revisión
 HORA_LATIDO = 10                # hora de Lima (0-23) desde la cual se envía el aviso diario "bot activo"
 MAX_PAGINAS_HTML = 8            # páginas HTML máximas a leer por tienda
 SEEN_FILE = "vistos_moda_belleza.json"
