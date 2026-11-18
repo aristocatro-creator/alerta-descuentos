@@ -51,11 +51,11 @@ HORA_LATIDO = 8  # hora de Lima (0-23) desde la cual se envía el aviso diario "
 BUSQUEDAS = [
     "caterpillar", "parlantes", "ear",
     "celular", "smartphone", "mochila", "sckechers",
-    "televisor", "audifonos", "scooter", "consola",
+    "televisor", "audifonos", "scooter", "iphone",
     "zapatilla", "porta", "mochila",
-    "jvc", "microondas", "KY4115B",
-    "freidora", "on-ear", "arroz", "brother",
-    "oliva", "aceite", "fideo", "sandalia",
+    "jvc", "estacionaria", "KY4115B",
+    "freidora", "on-ear", "bicicleta", "brother",
+    "oliva", "spining", "fideo", "sandalia",
 ]
 SEEN_FILE = "vistos.json"
 
