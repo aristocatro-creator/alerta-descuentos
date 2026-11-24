@@ -54,7 +54,7 @@ BUSQUEDAS = [
     "televisor", "audifonos", "scooter", "iphone",
     "zapatilla", "porta", "mochila",
     "jvc", "estacionaria", "KY4115B",
-    "freidora", "on-ear", "bicicleta", "brother",
+    "freidora", "on-ear",
     "oliva", "spining", "fideo", "sandalia",
 ]
 SEEN_FILE = "vistos.json"
